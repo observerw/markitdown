@@ -1,8 +1,9 @@
 import re
-import markdownify
-
 from typing import Any, Optional
 from urllib.parse import quote, unquote, urlparse, urlunparse
+
+import bs4
+import markdownify
 
 
 class _CustomMarkdownify(markdownify.MarkdownConverter):
@@ -58,9 +59,15 @@ class _CustomMarkdownify(markdownify.MarkdownConverter):
         if href:
             try:
                 parsed_url = urlparse(href)  # type: ignore
-                if parsed_url.scheme and parsed_url.scheme.lower() not in ["http", "https", "file"]:  # type: ignore
+                if parsed_url.scheme and parsed_url.scheme.lower() not in [
+                    "http",
+                    "https",
+                    "file",
+                ]:  # type: ignore
                     return "%s%s%s" % (prefix, text, suffix)
-                href = urlunparse(parsed_url._replace(path=quote(unquote(parsed_url.path))))  # type: ignore
+                href = urlunparse(
+                    parsed_url._replace(path=quote(unquote(parsed_url.path)))
+                )  # type: ignore
             except ValueError:  # It's not clear if this ever gets thrown
                 return "%s%s%s" % (prefix, text, suffix)
 
@@ -109,3 +116,10 @@ class _CustomMarkdownify(markdownify.MarkdownConverter):
 
     def convert_soup(self, soup: Any) -> str:
         return super().convert_soup(soup)  # type: ignore
+
+    def convert_table(self, el: bs4.element.Tag, text: str, parent_tags):
+        if not (id := el.get("id")):
+            return super().convert_table(el, text, parent_tags)
+
+        # HACK convert table to a placeholder for post-processing
+        return f"[@tab:{id}]"
